@@ -1,0 +1,13 @@
+beautifulsoup4==4.12.2
+fastapi==0.103.1
+google_api_python_client==2.96.0
+google_auth_oauthlib==1.0.0
+openai==0.27.4
+pdfkit==1.0.0
+protobuf==4.24.2
+python-dotenv>=0.21.1
+Requests==2.31.0
+schedule==1.2.0
+selenium>=4.11.2
+uvicorn~=0.22.0
+fastapi-utils>=0.2.0
