@@ -127,7 +127,6 @@ import os
 from stargazer.stargazer import Stargazer
 from IPython.core.display import HTML
 
-# Assuming df is your DataFrame and it already includes the necessary dummy variables
 
 # Selecting the dependent variable
 Y = df['Outcome']
@@ -169,12 +168,10 @@ with open(latex_file_path, 'w') as f:
 
 
 
-#### alt modelling 
+#### alternative modelling [fighting multicollinearity with lasso regression]
 
 from sklearn.linear_model import Lasso, LogisticRegression
 from sklearn.preprocessing import StandardScaler
-
-# Assuming df is your DataFrame and it already includes the necessary dummy variables
 
 # Selecting the dependent variable
 Y = df['Outcome']
@@ -203,10 +200,6 @@ lasso_model.fit(X_scaled, Y)
 # Fit the Logistic LASSO model
 logistic_lasso_model = LogisticRegression(penalty='l1', solver='liblinear', C=1.0)  # C is inverse of regularization strength
 logistic_lasso_model.fit(X_scaled, Y)
-
-# We can't use Stargazer directly with sklearn models as it's designed for statsmodels objects
-# You would need to extract the coefficients and the standard errors manually to report them
-# or convert the sklearn models into a format that Stargazer can understand (not straightforward)
 
 # Save the coefficients to a file
 coefficients_file_path = os.path.join(output_dir, 'lasso_coefficients.txt')
