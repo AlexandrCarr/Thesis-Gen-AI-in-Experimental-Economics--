@@ -1,4 +1,10 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jan 22 10:27:52 2024
 
+@author: alexandrcarr
+"""
 
 import pandas as pd
 
@@ -11,6 +17,7 @@ df = df.iloc[:3509]
 ## Data Cleaning ##
 ###################
 
+
 # Creating Reference Categories For Dummy Variables
 categories_to_drop = {
     'Ethnicity': 'White',
@@ -19,6 +26,7 @@ categories_to_drop = {
     'Qualification': 'Low',
     'Income': 'Low',
     'Region': 'Prague'
+
 }
 
 # List of columns to create dummies for
@@ -61,12 +69,11 @@ for column in columns_to_dummies:
     # Join the dummy variables with the original dataframe
     df = df.join(dummies)
 
-# Merging dummies into categories to ease analysis 
 
 mergers = {
     "Food Production and Agriculture": ["Baking", "Meat", "Groceries", "Meats", "Food production and agriculture"],
     "Hotel and Restaurant Services": ["Hotels and restaurants", "Hotel", "Hotel ", "Restaraunts", "Restaurant"],
-    "Heavy Industry Manufacturing": ["Heavy industry", "Heavy industry manufacturing", "Industry", "Inudstrials", "Steel  ", "Manufacturing", "Steel Trade"],
+    "Heavy Industry Manufacturing": ["Heavy industry", "Heavy industry manufacturing", "Industry", "Inudstrials", "Steel  ", "Manufacturing", "Steel Trade", "Steel "],
     "Retail Sales": ["Fashion", "Fast Food", "Retail sales"],
     "Luxury Retail Sales": ["Luxury retail sales"],
     "Healthcare and Pharmaceuticals": ["Pharma"],
@@ -88,6 +95,13 @@ for merged_name, industries in mergers.items():
         df[merged_col_name] = df[merged_col_name] | df[original_col_name]
         # Drop the original column
         df.drop(columns=[original_col_name], inplace=True)
+        
+
+# Drop one industry 
+
+if 'Industry: TMT' in df.columns:
+    df.drop(columns=['Industry: TMT'], inplace=True)
+
 
 # Print out all the dropped dummies to verify
 print("All dropped dummies:")
@@ -102,14 +116,7 @@ for column, category in all_dropped_dummies.items():
 # Interaction of "Income: High" with "Ethnicity: Roma"
 df['Interaction_Income_High_Ethnicity_Roma'] = df['Income: High'] * df['Ethnicity: Roma']
 
-# Interaction of "Income: High" with the implicit "Ethnicity: White" 
-# (This will be the same as "Income: High" itself since "Ethnicity: White" is the reference category)
-df['Interaction_Income_High_Ethnicity_White'] = df['Income: High']
-
-# Interaction of "Income: Low" with "Ethnicity: Roma" 
-# (This will be the same as "Ethnicity: Roma" itself since "Income: Low" is the reference category)
-df['Interaction_Income_Low_Ethnicity_Roma'] = df['Ethnicity: Roma']
-
+df['Interaction_Roma_SocialCare'] = df['Ethnicity: Roma'] * df['Industry: Social care']
 
 
 ###############
@@ -121,6 +128,7 @@ import os
 from stargazer.stargazer import Stargazer
 from IPython.core.display import HTML
 
+# Assuming df is your DataFrame and it already includes the necessary dummy variables
 
 # Selecting the dependent variable
 Y = df['Outcome']
@@ -128,7 +136,7 @@ Y = df['Outcome']
 # List of prefixes for your dummy variables
 dummy_prefixes = [
     'Gender:',  'Ethnicity:', 'Region:', 'Job Category:', 'Income:', 'Industry:', 
-    'Qualification:','Min_Education Requirements:'
+    'Qualification:','Min_Education Requirements:', 'Interaction_'
 ]
 # Selecting the independent variables (all the dummies for specified columns)
 X = df[[col for col in df.columns if any(col.startswith(prefix) for prefix in dummy_prefixes)]]
@@ -162,10 +170,12 @@ with open(latex_file_path, 'w') as f:
 
 
 
-#### alternative modelling [fighting multicollinearity with lasso regression]
+#### alt modelling 
 
 from sklearn.linear_model import Lasso, LogisticRegression
 from sklearn.preprocessing import StandardScaler
+
+# Assuming df is your DataFrame and it already includes the necessary dummy variables
 
 # Selecting the dependent variable
 Y = df['Outcome']
@@ -173,7 +183,7 @@ Y = df['Outcome']
 # List of prefixes for your dummy variables
 dummy_prefixes = [
     'Gender', 'Ethnicity', 'Region', 'Job_Category', 'Income', 'Industry', 
-    'Qualification','Min_Education_Requirements'
+    'Qualification','Min_Education_Requirements', 'Interaction_'
 ]
 
 # Selecting the independent variables (all the dummies for specified columns)
@@ -195,6 +205,10 @@ lasso_model.fit(X_scaled, Y)
 logistic_lasso_model = LogisticRegression(penalty='l1', solver='liblinear', C=1.0)  # C is inverse of regularization strength
 logistic_lasso_model.fit(X_scaled, Y)
 
+# We can't use Stargazer directly with sklearn models as it's designed for statsmodels objects
+# You would need to extract the coefficients and the standard errors manually to report them
+# or convert the sklearn models into a format that Stargazer can understand (not straightforward)
+
 # Save the coefficients to a file
 coefficients_file_path = os.path.join(output_dir, 'lasso_coefficients.txt')
 with open(coefficients_file_path, 'w') as f:
@@ -206,6 +220,38 @@ with open(coefficients_file_path, 'w') as f:
         f.write(f"{col}: {coef}\n")
 
 coefficients_file_path
+
+#############
+# Alt Pres ##
+#############
+
+
+import pandas as pd
+
+# Create a DataFrame for the LASSO model coefficients
+lasso_df = pd.DataFrame({
+    'Variable': X.columns,
+    'LASSO Coefficient': lasso_model.coef_
+})
+
+# Create a DataFrame for the Logistic LASSO model coefficients
+logistic_lasso_df = pd.DataFrame({
+    'Variable': X.columns,
+    'Logistic LASSO Coefficient': logistic_lasso_model.coef_[0]
+})
+
+# Combine the DataFrames
+combined_df = pd.concat([lasso_df.set_index('Variable'), logistic_lasso_df.set_index('Variable')], axis=1)
+
+# Reset index to get 'Variable' column
+combined_df.reset_index(inplace=True)
+
+# Save to Excel file
+excel_file_path = os.path.join(output_dir, 'model_coefficients.xlsx')
+combined_df.to_excel(excel_file_path, index=False)
+
+excel_file_path
+
 
 
 
